@@ -95,8 +95,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
             {'detail': e},
             status_code=422)
 
-    img = render_map(fetch_data(zip_list), height, width)
-    if zips:
+    if len(zip_list) != 0:
+        img = render_map(fetch_data(zip_list), height, width)
         return func.HttpResponse(body=img, headers=headers)
     else:
         return func.HttpResponse(
