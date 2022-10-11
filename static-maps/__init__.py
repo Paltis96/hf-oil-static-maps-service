@@ -1,5 +1,6 @@
 from array import array
 import logging
+from msilib.schema import Error
 from .staticmap import StaticMap, Polygon, TextMarker, Line
 
 from io import BytesIO
@@ -52,42 +53,53 @@ def render_map(polygons: list, width: int, height: int):
         )
     color_base = Color("#FDBB2D")
     colors = list(color_base.range_to(Color("#22C1C3"), len(polygons)))
+
     for idx, coords in enumerate(polygons):
         coord_list = mapping(coords)['coordinates'][0]
         m.add_polygon(
             Polygon(coord_list, f'{colors[idx].hex_l}80', colors[idx].hex_l, False))
         m.add_line(Line(coord_list, colors[idx].hex_l, 2, False))
-        
+
         # centroid_list = mapping(coords.centroid)['coordinates']
         # m.add_marker(TextMarker(list(centroid_list), '#0E8BDE' , 'long test text',18))
 
     image = m.render()
-
     image.save(img_io, format='png')
     img_io.seek(0)
     return img_io.read()
+
+# http://localhost:7071/api/static-maps?zips=11703,11704,11705,11706&height=1280&width=720
 
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
     headers = {"media-type": "image/png"}
+    zip_list = list()
 
     zips = req.params.get('zips')
-    width = int(req.params.get('width'))
-    height = int(req.params.get('height'))
+    width = req.params.get('width')
+    height = req.params.get('height')
 
     if not width:
         width = 800
     if not height:
         height = 600
 
-    zip_list = [int(x) for x in zips.split(',')]
+    try:
+        zip_list = [int(x) for x in zips.split(',')]
+        width = int(width)
+        height = int(height)
+
+    except Exception as e:
+        return func.HttpResponse(
+            {'detail': e},
+            status_code=422)
 
     img = render_map(fetch_data(zip_list), height, width)
     if zips:
         return func.HttpResponse(body=img, headers=headers)
     else:
         return func.HttpResponse(
-            "Zips not found",
+            {'detail': "zips not found"},
             status_code=404
         )
