@@ -1,18 +1,19 @@
-from array import array
 import logging
-from msilib.schema import Error
-from .staticmap import StaticMap, Polygon, TextMarker, Line
-
+import os
 from io import BytesIO
 import sqlite3
+
 from shapely.geometry import mapping
 from shapely import wkb
-import os
-import azure.functions as func
 from colour import Color
 
-PATH = f'{os.path.dirname(os.path.abspath(__file__))}/'
-DB_NAME = 'zcta.sqlite'
+import azure.functions as func
+
+from .staticmap import StaticMap, Polygon, TextMarker, Line
+
+
+PATH = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = '/zcta.sqlite'
 
 BASEMAPS = {'World_Street_Map': 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
             'World_Transportation': 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}',
@@ -21,11 +22,11 @@ BASEMAPS = {'World_Street_Map': 'https://server.arcgisonline.com/ArcGIS/rest/ser
             'NatGeo_World_Map': 'http://services.arcgisonline.com/ArcGIS/rest/services/NatGeo_World_Map/MapServer/tile/{z}/{y}/{x}'}
 
 
-def fetch_data(zip_list: array) -> list:
+def fetch_data(zip_list: list) -> list:
     geojson_list = list()
 
     con = sqlite3.connect(
-        PATH + DB_NAME)
+        PATH + DB_PATH)
 
     cur = con.cursor()
     res = cur.execute(
