@@ -2,6 +2,7 @@ import logging
 import os
 from io import BytesIO
 import sqlite3
+import json
 
 from shapely.geometry import mapping
 from shapely import wkb
@@ -42,16 +43,13 @@ def fetch_data(zip_list: list) -> list:
 
 
 def render_map(polygons: list, width: int, height: int):
+    if len(polygons) == 0:
+        raise Exception("zips not found")
 
     img_io = BytesIO()
     m = StaticMap(width, height, 10, 10,
                   BASEMAPS['World_Topo_Map'])
 
-    if len(polygons) == 0:
-        return func.HttpResponse(
-            "Zips not found",
-            status_code=404
-        )
     color_base = Color("#FDBB2D")
     colors = list(color_base.range_to(Color("#22C1C3"), len(polygons)))
 
@@ -74,7 +72,6 @@ def render_map(polygons: list, width: int, height: int):
 
 def main(req: func.HttpRequest) -> func.HttpResponse:
     logging.info('Python HTTP trigger function processed a request.')
-    headers = {"media-type": "image/png"}
     zip_list = list()
 
     zips = req.params.get('zips')
@@ -90,17 +87,24 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         zip_list = [int(x) for x in zips.split(',')]
         width = int(width)
         height = int(height)
-
     except Exception as e:
         return func.HttpResponse(
-            {'detail': e},
-            status_code=422)
+            body=json.dumps({'detail': str(e)}),
+            status_code=422, mimetype="application/json")
 
     if len(zip_list) != 0:
-        img = render_map(fetch_data(zip_list), height, width)
-        return func.HttpResponse(body=img, headers=headers)
+        try:
+            img = render_map(fetch_data(zip_list), height, width)
+            return func.HttpResponse(body=img, mimetype="image/png")
+        except Exception as e:
+            return func.HttpResponse(
+                body=json.dumps({'detail': "zips not found"}),
+                status_code=404, mimetype="application/json",
+            )
+
     else:
         return func.HttpResponse(
-            {'detail': "zips not found"},
-            status_code=404
+            body=json.dumps({'detail': "zip list is empty"}),
+            status_code=404, mimetype="application/json",
+
         )
